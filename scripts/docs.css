@@ -29,6 +29,22 @@ body > header h1 {
   letter-spacing: -0.04em;
 }
 
+body > header .repo-link {
+  margin-top: 0.5rem;
+  text-align: right;
+}
+
+body > header .repo-link a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+body > header .repo-link a:hover,
+body > header .repo-link a:focus {
+  text-decoration: underline;
+}
+
 #TOC {
   margin: 1.5rem 0 3rem;
   padding: 1rem 1.25rem;
