@@ -1,5 +1,8 @@
 # hs-mock
 
+[![LuaRocks](https://img.shields.io/luarocks/v/hugoh/hs-mock)](https://luarocks.org/modules/hugoh/hs-mock)
+[![API docs](https://img.shields.io/badge/docs-API-blue)](https://hugoh.github.io/hs-mock/)
+
 A mock of the [Hammerspoon](https://www.hammerspoon.org/) `hs` global for
 testing Spoons under [busted](https://lunarmodules.github.io/busted/).
 
@@ -71,52 +74,15 @@ end)
 
 ## API
 
-The mock covers `logger.new`; `timer.doAfter`, `doEvery`, `new`, `secondsSinceEpoch`,
-`absoluteTime`; `task.new`; `menubar.new`; `notify.new`, `activationTypes`;
-`caffeinate.watcher`; `application.find`, `get`, `watcher`; `hotkey.bind`;
-`audiodevice` (devices, defaults, `watcher`); `image.imageFromName`, `iconForFile`;
-`execute`; `open`; `ipc` (present); `alert`; `settings`; `screen.mainScreen`;
-`mouse.absolutePosition`; `eventtap` (`keyStroke`, `leftClick`, `new`, `event`);
-`websocket`; `wifi`; `host.interfaceStyle`; `distributednotifications`;
-`spoons.resourcePath` (returns the file unchanged); `application.launchOrFocus`,
-`launchOrFocusByBundleID`, `frontmostApplication`;
-`json.read`, `write`; `fs.attributes`, `mkdir`; `fnutils` and `inspect`
-(Hammerspoon's own code, vendored). Event constants match Hammerspoon 1.1.1.
+The [API reference](https://hugoh.github.io/hs-mock/) lists what is mocked and
+every `ctl` test control. It is generated from the
+[LuaLS](https://luals.github.io/) annotations in `lua/hs_mock.lua`, so editors
+running LuaLS also complete and type-check `ctl` once the install tree is on
+the library path:
 
-Tests drive it through `ctl`:
-
-| Control | Effect |
-|---|---|
-| `ctl.now` | Virtual clock in seconds; drives `secondsSinceEpoch` and `absoluteTime` (ns) |
-| `ctl.advance(s)` | Moves the clock, firing due timers in due-time order (ties in scheduling order); `doEvery` and started `timer.new` re-arm |
-| `ctl.flush()` | Fires the one-shot timers pending now, whatever their delay; leaves repeating timers and ones scheduled meanwhile |
-| `ctl.timers()` | Running timers |
-| `ctl.logs`, `ctl.logged(level)` | Every log line at every level (`{ logger, level, message }`), or the messages at one level |
-| `ctl.tasks` | Created tasks; `task:complete(code, stdout, stderr)` calls back. `terminate()` doesn't |
-| `ctl.onTask = fn(task)` | Called on `task:start()`; returning an exit code completes the task at once |
-| `ctl.menubars` | Created menubars (`_title`, `_icon`, `_menu`, `_tooltip`, `_deleted`…); `bar:_click()` |
-| `ctl.notifications`, `ctl.activate(note, type)` | Created notifications (`_attributes`, `_sent`, `_withdrawn`); activation calls back |
-| `ctl.caffeinate(event)`, `ctl.appEvent(name, event, app)` | Delivers to started watchers |
-| `ctl.apps[name]`, `ctl.frontmost` | `application.find` / `get` match a key of `ctl.apps`, else a `bundleID()` among those apps and the frontmost one; `frontmostApplication` returns `ctl.frontmost` |
-| `ctl.launched` | Names and bundle ids passed to `launchOrFocus` / `launchOrFocusByBundleID` |
-| `ctl.addAudioDevice{ name, uid, input, transport, muted, volume, inUse }` | Adds an output (or `input = true`) device; `uid` defaults to `name` |
-| `ctl.audio.defaultOutput`, `ctl.audio.defaultInput` | The default devices; `setDefault*Device()` updates them |
-| `ctl.audioEvent(event)`, `ctl.deviceEvent(device, event, scope, element)` | Fires the running `audiodevice.watcher`, or a watching device's callback |
-| `ctl.executed`, `ctl.onExecute = fn(cmd)` | Commands passed to `hs.execute`; `onExecute` returns its `output, status, type, rc` (default `"", true, "exit", 0`) |
-| `ctl.opened` | Paths passed to `hs.open` |
-| `ctl.alerts` | `{ id, text, style, screen, seconds, closed }` per `alert.show` (which returns the string `id`) |
-| `ctl.settings`, `ctl.screenFrame`, `ctl.mousePosition` | Backing state for `settings`, `screen.mainScreen():frame()` and `mouse.absolutePosition` |
-| `ctl.keyStrokes`, `ctl.clicks`, `ctl.posted` | `eventtap.keyStroke` / `leftClick` calls and posted events |
-| `ctl.newEvent{ type, systemKey, flags }`, `ctl.tapEvent(event)` | Builds an event; delivers it to the first enabled tap watching its type and returns that tap's answer |
-| `ctl.websockets`, `ctl.websocketEvent(ws, event, message)` | Created websockets (`_url`, `_sent`, `_closed`); calls a socket's callback |
-| `ctl.wifiNetwork`, `ctl.wifiEvent(message, interface)` | `wifi.currentNetwork`; notifies running wifi watchers (default `"SSIDChange"`, `"en0"`) |
-| `ctl.interfaceStyle` | `host.interfaceStyle`: `nil` (light) or `"Dark"`, as macOS reports |
-| `ctl.distributedNotification(name, object, userInfo)` | Delivers to running watchers registered for that name, or for all |
-| `ctl.images[nameOrPath]` | What `image.imageFromName` / `iconForFile` return; unknown names give `nil`, as in Hammerspoon |
-| `ctl.hotkeys` | Bindings: `mods`, `key`, `message`, `pressed`, `enabled`, `deleted` |
-| `ctl.files[path]`, `ctl.dirs[path]` | The filesystem behind `json` and `fs`; a non-table file value reads as malformed JSON |
-
-`json.read` and `json.write` copy, like real serialization.
+```json
+{ "workspace.library": [".rocks/share/lua/5.4"] }
+```
 
 ## What belongs here, and what stays in a Spoon's tests
 
@@ -133,6 +99,7 @@ comment on why, when it is:
 
 ```sh
 mise run test          # specs, plus the rock built and required from its own tree
+mise run docs          # build the API page into docs/ from the annotations
 mise run vendor 1.1.1  # refresh vendored fnutils and inspect
 ```
 
