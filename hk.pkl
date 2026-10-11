@@ -1,0 +1,36 @@
+amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Builtins.pkl"
+import "package://github.com/hugoh/hk-config/releases/download/v2.1.3/hk-config@2.1.3#/base.pkl" as Base
+
+min_hk_version = Base.min_hk_version
+
+// Vendored upstream files stay byte-identical to Hammerspoon's for easy refresh.
+exclude = List("lua/hs_mock/fnutils.lua", "lua/hs_mock/inspect.lua")
+
+local linters = new Mapping<String, Step> {
+    ...Base.base
+    ...Base.lua
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+    ["pre-push"] {
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["commit-msg"] {
+        steps = new Mapping<String, Step> {
+            ...Base.commit_msg
+        }
+    }
+}

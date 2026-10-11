@@ -1,0 +1,66 @@
+---
+name: release
+
+on: # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to create a GitHub Release for; skips the bump
+        required: false
+        type: string
+      bump:
+        description: Force the bump level (auto = derive from commits). Ignored when tag is set.
+        required: false
+        type: choice
+        default: auto
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+      notes:
+        description: "Release notes body (default: GitHub auto-generated notes)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: hugoh/gh-workflows/.github/workflows/release.yml@8c946a496e3f02569b0964bda0eba79a2082660d # v1.40.8
+    permissions:
+      contents: write
+    with:
+      tag: ${{ inputs.tag || '' }}
+      bump: ${{ inputs.bump || 'auto' }}
+      notes: ${{ inputs.notes || '' }}
+      package-command: luarocks new_version hs-mock-scm-1.rockspec "$VERSION" --tag="$TAG"
+      package-artifacts: hs-mock-[0-9]*-1.rockspec
+
+  # Publishes to luarocks.org once a LUAROCKS_API_KEY secret is set; skipped until then.
+  luarocks:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: hugoh/gh-workflows/setup@8c946a496e3f02569b0964bda0eba79a2082660d # v1.40.8
+      - name: Upload to luarocks.org
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$LUAROCKS_API_KEY" ]; then
+            echo "::notice::LUAROCKS_API_KEY is not set; skipping luarocks.org upload"
+            exit 0
+          fi
+          version="${TAG#v}"
+          luarocks new_version hs-mock-scm-1.rockspec "$version" --tag="$TAG"
+          luarocks upload "hs-mock-$version-1.rockspec" --api-key="$LUAROCKS_API_KEY"
