@@ -45,7 +45,12 @@ trap 'rm -rf "$work"' EXIT
 lua-language-server --doc="$PWD/lua" --doc_out_path="$work" --logpath="$work/log" >/dev/null
 lua scripts/api-md.lua "$work/doc.md" "$work/api.md"
 mkdir -p docs
+cp scripts/vendor/simple.css docs/simple.css
+cp scripts/vendor/SIMPLECSS-LICENSE docs/SIMPLECSS-LICENSE
+cp scripts/docs.css docs/docs.css
 pandoc "$work/api.md" --standalone --toc --toc-depth=1 \\
+  --css=simple.css \\
+  --css=docs.css \\
   --metadata title="hs-mock API" \\
   --metadata description="Mock of the Hammerspoon hs global for testing Spoons under busted" \\
   -o docs/index.html

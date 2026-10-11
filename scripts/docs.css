@@ -1,0 +1,76 @@
+:root {
+  --accent: #087e65;
+  --accent-hover: #06634f;
+  --accent-bg: #e7f3ee;
+  --border: #d3ded7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #71d3ae;
+    --accent-hover: #a0e7cb;
+    --accent-bg: #263c32;
+    --border: #405148;
+  }
+}
+
+body {
+  grid-template-columns: 1fr min(68rem, 92%) 1fr;
+  font-size: 1rem;
+}
+
+body > header {
+  padding: 1.5rem max(1rem, calc((100% - 68rem) / 2));
+  text-align: left;
+}
+
+body > header h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+#TOC {
+  margin: 1.5rem 0 3rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--accent-bg);
+}
+
+#TOC ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#TOC a {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+h1[id] {
+  margin-top: 3.25rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--border);
+  font-size: clamp(1.65rem, 3vw, 2rem);
+}
+
+h1[id],
+h2[id] {
+  scroll-margin-top: 1rem;
+}
+
+h2[id] {
+  margin-top: 2rem;
+  font-size: 1.15rem;
+}
+
+pre {
+  border-radius: 0.65rem;
+  font-size: 0.88rem;
+}
