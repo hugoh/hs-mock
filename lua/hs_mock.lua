@@ -1,9 +1,25 @@
--- A mock of the Hammerspoon `hs` global for testing Spoons under busted.
--- See README.md ("hs_mock") for usage.
-
 local fnutils = require("hs_mock.fnutils")
 local inspect = require("hs_mock.inspect")
 
+---A mock of the Hammerspoon `hs` global for testing Spoons under busted.
+---
+---`hs_mock.new()` returns a fresh `hs` and the `ctl` test controls. The mock is
+---strict: reading an `hs.<name>` it doesn't provide raises
+---`hs_mock: hs.<name> is not mocked`; tests can add or replace anything.
+---
+---Mocked: `logger`; `timer` (`doAfter`, `doEvery`, `new`, `secondsSinceEpoch`,
+---`absoluteTime`); `task`; `menubar`; `notify`; `caffeinate.watcher`;
+---`application` (`find`, `get`, `watcher`, `launchOrFocus`,
+---`launchOrFocusByBundleID`, `frontmostApplication`); `hotkey.bind`;
+---`audiodevice`; `image` (`imageFromName`, `iconForFile`); `execute`; `open`;
+---`ipc` (present); `alert`; `settings`; `screen.mainScreen`;
+---`mouse.absolutePosition`; `eventtap` (`keyStroke`, `leftClick`, `new`,
+---`event`); `websocket`; `wifi`; `host.interfaceStyle`;
+---`distributednotifications`; `spoons.resourcePath` (returns the file
+---unchanged); `json.read`, `write`; `fs.attributes`, `mkdir`; and
+---Hammerspoon's own `fnutils` and `inspect`, vendored. Event constants match
+---Hammerspoon 1.1.1. `json.read` and `json.write` copy, like real serialization.
+---@class hs_mock
 local M = {}
 
 local LOG_LEVELS = { nothing = 0, error = 1, warning = 2, info = 3, debug = 4, verbose = 5 }
@@ -36,9 +52,15 @@ local function packed(...)
 	return table.concat(parts, " ", 1, parts.n)
 end
 
+---A task from `hs.task.new`, keeping `_path`, `_args`, `_running` and `_terminated`.
+---@class HsMockTask
 local Task = {}
 Task.__index = Task
 
+---A menu bar item from `hs.menubar.new`; state set through its methods is kept in
+---`_title`, `_icon`, `_iconTemplate`, `_menu`, `_tooltip`, `_autosaveName`,
+---`_inMenuBar` and `_deleted`.
+---@class HsMockMenubar
 local Menubar = {}
 Menubar.__index = Menubar
 
@@ -233,6 +255,7 @@ end
 
 function Menubar:delete() self._deleted = true end
 
+---Calls the click callback, as clicking the menu bar item would.
 function Menubar:_click()
 	if self._clickCallback then return self._clickCallback({}) end
 end
@@ -249,7 +272,44 @@ end
 
 function Notification:activationType() return self._activationType or 0 end
 
+---Builds a fresh mock; call it from `before_each`.
+---@return table hs The mock `hs` global; assign it to `_G.hs`.
+---@return HsMockCtl ctl The test controls.
 function M.new()
+	---Test controls returned by `hs_mock.new()`.
+	---@class HsMockCtl
+	---@field now number Virtual clock in seconds; drives `hs.timer.secondsSinceEpoch` and `absoluteTime` (integer nanoseconds).
+	---@field logs { logger: string, level: string, message: string }[] Every log line at every level.
+	---@field tasks HsMockTask[] Tasks created by `hs.task.new`.
+	---@field onTask? fun(task: HsMockTask): integer?, string?, string? Called on `task:start()`; returning an exit code completes the task at once.
+	---@field menubars HsMockMenubar[] Menu bar items created by `hs.menubar.new`.
+	---@field notifications table[] Notifications from `hs.notify.new`, keeping `_attributes`, `_sent` and `_withdrawn`.
+	---@field hotkeys { mods: string[], key: string, message?: string, pressed?: function, released?: function, repeated?: function, enabled: boolean, deleted: boolean }[] Bindings made with `hs.hotkey.bind`.
+	---@field apps table<string, table> Apps `hs.application.find` and `get` return: by key, else by `bundleID()` among these and `frontmost`.
+	---@field frontmost? table What `hs.application.frontmostApplication` returns.
+	---@field launched string[] Names and bundle ids passed to `launchOrFocus` / `launchOrFocusByBundleID`.
+	---@field caffeinateWatchers table[] Watchers from `hs.caffeinate.watcher.new`.
+	---@field appWatchers table[] Watchers from `hs.application.watcher.new`.
+	---@field files table<string, any> The files behind `hs.json` and `hs.fs`; a non-table value reads as malformed JSON.
+	---@field dirs table<string, boolean> Directories made by `hs.fs.mkdir`.
+	---@field images table<string, any> What `hs.image.imageFromName` / `iconForFile` return; unknown names give `nil`, as in Hammerspoon.
+	---@field audio { outputs: table[], inputs: table[], defaultOutput?: table, defaultInput?: table } Audio devices and defaults; `setDefault*Device()` updates the defaults.
+	---@field executed string[] Commands passed to `hs.execute`.
+	---@field onExecute? fun(command: string, withUserEnv?: boolean): string, boolean, string, integer Answers `hs.execute`; the default returns `"", true, "exit", 0`.
+	---@field opened string[] Paths passed to `hs.open`.
+	---@field alerts { id: string, text: string, style?: table, screen?: table, seconds?: number, closed: boolean }[] One entry per `hs.alert.show`, which returns the string `id`.
+	---@field settings table<string, any> Backing store for `hs.settings`.
+	---@field screenFrame { x: number, y: number, w: number, h: number } What `hs.screen.mainScreen():frame()` returns (a copy).
+	---@field mousePosition { x: number, y: number } What `hs.mouse.absolutePosition` reads and sets.
+	---@field keyStrokes { mods: string[], key: string, delay?: number, app?: table }[] Calls to `hs.eventtap.keyStroke`.
+	---@field clicks { x: number, y: number }[] Points passed to `hs.eventtap.leftClick`.
+	---@field posted table[] Events posted with `event:post()`.
+	---@field taps table[] Event taps from `hs.eventtap.new`.
+	---@field websockets table[] Sockets from `hs.websocket.new`, keeping `_url`, `_sent` and `_closed`.
+	---@field wifiNetwork? string What `hs.wifi.currentNetwork` returns.
+	---@field wifiWatchers table[] Watchers from `hs.wifi.watcher.new`.
+	---@field interfaceStyle? string What `hs.host.interfaceStyle` returns: `nil` (light) or `"Dark"`, as macOS reports.
+	---@field notificationWatchers table[] Watchers from `hs.distributednotifications.new`.
 	local ctl = {
 		now = 0,
 		logs = {},
@@ -346,6 +406,9 @@ function M.new()
 		return timer
 	end
 
+	---Moves the clock, firing due timers in due-time order (ties in scheduling
+	---order); `doEvery` and started `hs.timer.new` timers re-arm.
+	---@param seconds number
 	function ctl.advance(seconds)
 		local target = ctl.now + seconds
 		local firings = 0
@@ -357,6 +420,8 @@ function M.new()
 		ctl.now = target
 	end
 
+	---Fires the one-shot timers pending now, whatever their delay, moving the clock
+	---to each; leaves repeating timers and ones scheduled meanwhile.
 	function ctl.flush()
 		local pending = {}
 		for _, t in ipairs(timers) do
@@ -368,6 +433,8 @@ function M.new()
 		end
 	end
 
+	---The running timers, in creation order.
+	---@return table[]
 	function ctl.timers()
 		local live = {}
 		for _, t in ipairs(timers) do
@@ -376,6 +443,9 @@ function M.new()
 		return live
 	end
 
+	---The messages logged at one level.
+	---@param level "error"|"warning"|"info"|"debug"|"verbose"
+	---@return string[]
 	function ctl.logged(level)
 		local messages = {}
 		for _, entry in ipairs(ctl.logs) do
@@ -384,17 +454,27 @@ function M.new()
 		return messages
 	end
 
+	---Activates a notification with a `hs.notify.activationTypes` value and calls
+	---its callback.
+	---@param notification table
+	---@param activationType integer
 	function ctl.activate(notification, activationType)
 		notification._activationType = activationType
 		if notification._callback then notification._callback(notification) end
 	end
 
+	---Delivers a `hs.caffeinate.watcher` event to the started watchers.
+	---@param event integer
 	function ctl.caffeinate(event)
 		for _, w in ipairs(ctl.caffeinateWatchers) do
 			if w._running then w._fn(event) end
 		end
 	end
 
+	---Adds an audio device: an output, or an input with `input = true`; `uid`
+	---defaults to `name`.
+	---@param attributes { name: string, uid?: string, input?: boolean, transport?: string, muted?: boolean, volume?: number, inUse?: boolean }
+	---@return table device
 	function ctl.addAudioDevice(attributes)
 		local device = setmetatable({
 			_name = attributes.name,
@@ -411,14 +491,24 @@ function M.new()
 		return device
 	end
 
+	---Fires the running `hs.audiodevice.watcher` callback.
+	---@param event string
 	function ctl.audioEvent(event)
 		if audioWatcher.running and audioWatcher.callback then audioWatcher.callback(event) end
 	end
 
+	---Calls a device's watcher callback, if it is watching.
+	---@param device table
+	---@param event string
+	---@param scope string
+	---@param element integer
 	function ctl.deviceEvent(device, event, scope, element)
 		if device._watching and device._watchCb then device._watchCb(device:uid(), event, scope, element) end
 	end
 
+	---Builds an event, as `hs.eventtap.event` constructors would.
+	---@param attributes { type: integer, systemKey?: { key: string, down: boolean }, flags?: table }
+	---@return table event
 	function ctl.newEvent(attributes)
 		return setmetatable({
 			_type = attributes.type,
@@ -428,6 +518,9 @@ function M.new()
 		}, Event)
 	end
 
+	---Delivers an event to the first enabled tap watching its type.
+	---@param event table
+	---@return any answer What that tap's callback returned, or `nil` if none matched.
 	function ctl.tapEvent(event)
 		for _, tap in ipairs(ctl.taps) do
 			if tap._enabled then
@@ -438,14 +531,26 @@ function M.new()
 		end
 	end
 
+	---Calls a socket's callback.
+	---@param ws table
+	---@param event string
+	---@param message? any
 	function ctl.websocketEvent(ws, event, message) return ws._callback(event, message) end
 
+	---Notifies the running wifi watchers.
+	---@param message? string Defaults to `"SSIDChange"`.
+	---@param interface? string Defaults to `"en0"`.
 	function ctl.wifiEvent(message, interface)
 		for _, w in ipairs(ctl.wifiWatchers) do
 			if w._running then w._fn(w, message or "SSIDChange", interface or "en0") end
 		end
 	end
 
+	---Delivers a notification to running watchers registered for its name, or
+	---for all.
+	---@param name string
+	---@param object? any
+	---@param userInfo? table
 	function ctl.distributedNotification(name, object, userInfo)
 		for _, w in ipairs(ctl.notificationWatchers) do
 			if w._running and (w._name == nil or w._name == name) then w._fn(name, object, userInfo) end
@@ -466,6 +571,10 @@ function M.new()
 
 	local alertCount = 0
 
+	---Delivers a `hs.application.watcher` event to the started watchers.
+	---@param name string
+	---@param event integer
+	---@param app? table
 	function ctl.appEvent(name, event, app)
 		for _, w in ipairs(ctl.appWatchers) do
 			if w._running then w._fn(name, event, app) end
@@ -821,6 +930,10 @@ function Task:start()
 	return self
 end
 
+---Finishes the task and calls its callback, as the process exiting would.
+---@param exitCode integer
+---@param stdout? string Defaults to `""`.
+---@param stderr? string Defaults to `""`.
 function Task:complete(exitCode, stdout, stderr)
 	self._running = false
 	if self._callback then self._callback(exitCode, stdout or "", stderr or "") end
