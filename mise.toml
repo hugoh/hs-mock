@@ -54,6 +54,15 @@ pandoc "$work/api.md" --standalone --toc --toc-depth=1 \\
   --metadata title="hs-mock API" \\
   --metadata description="Mock of the Hammerspoon hs global for testing Spoons under busted" \\
   -o docs/index.html
+python - <<'PY'
+from pathlib import Path
+path = Path('docs/index.html')
+text = path.read_text()
+needle = '<h1 class="title">hs-mock API</h1>'
+replacement = needle + '\n<p class="repo-link"><a href="https://github.com/hugoh/hs-mock">GitHub repository</a></p>'
+if 'GitHub repository' not in text:
+    path.write_text(text.replace(needle, replacement))
+PY
 echo "docs/index.html"
 """
 
