@@ -30,5 +30,7 @@ for _, name in ipairs(ORDER) do
 end
 
 local out = assert(io.open(output, "w"))
-out:write(table.concat(parts, "\n\n"), "\n")
+-- LuaLS writes `@*param*` / `@*return*` tags that pandoc would read as citations.
+local body = table.concat(parts, "\n\n"):gsub("\n@%*(%w+)%*", "\n**%1**")
+out:write(body, "\n")
 out:close()

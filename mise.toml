@@ -45,24 +45,15 @@ trap 'rm -rf "$work"' EXIT
 lua-language-server --doc="$PWD/lua" --doc_out_path="$work" --logpath="$work/log" >/dev/null
 lua scripts/api-md.lua "$work/doc.md" "$work/api.md"
 mkdir -p docs
-cp scripts/vendor/simple.css docs/simple.css
-cp scripts/vendor/SIMPLECSS-LICENSE docs/SIMPLECSS-LICENSE
 cp scripts/docs.css docs/docs.css
-pandoc "$work/api.md" --standalone --toc --toc-depth=1 \\
-  --css=simple.css \\
+pandoc "$work/api.md" --standalone --toc --toc-depth=1 --syntax-highlighting=breezedark \\
+  --css=https://cdn.jsdelivr.net/npm/@anyblades/blades@3/css/blades.min.css \\
   --css=docs.css \\
   --metadata title="hs-mock API" \\
   --metadata description="Mock of the Hammerspoon hs global for testing Spoons under busted" \\
   -o docs/index.html
-python - <<'PY'
-from pathlib import Path
-path = Path('docs/index.html')
-text = path.read_text()
-needle = '<h1 class="title">hs-mock API</h1>'
-replacement = needle + '\n<p class="repo-link"><a href="https://github.com/hugoh/hs-mock">GitHub repository</a></p>'
-if 'GitHub repository' not in text:
-    path.write_text(text.replace(needle, replacement))
-PY
+sed -i.bak 's|<h1 class="title">hs-mock API</h1>|&<p class="repo-link"><a href="https://github.com/hugoh/hs-mock">GitHub repository</a></p>|' docs/index.html
+rm docs/index.html.bak
 echo "docs/index.html"
 """
 
