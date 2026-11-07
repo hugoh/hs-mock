@@ -1,5 +1,5 @@
 [tools]
-hk = "2.9.0"
+hk = "2.10.0"
 lua = "5.4"
 "aqua:Kampfkarren/selene" = "0.32.0"
 stylua = "2.5.2"
