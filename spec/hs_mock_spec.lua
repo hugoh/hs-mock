@@ -604,6 +604,17 @@ describe("hs.execute and hs.open", function()
 	end)
 end)
 
+describe("hs.urlevent.openURL", function()
+	it("records opened URLs", function()
+		assert.is_true(hs.urlevent.openURL("todoist://today"))
+		assert.same({ "todoist://today" }, ctl.openedURLs)
+	end)
+
+	it("is strict about the rest of hs.urlevent", function()
+		assert.has_error(function() return hs.urlevent.bind end, "hs_mock: hs.urlevent.bind is not mocked")
+	end)
+end)
+
 describe("hs.ipc", function()
 	it("is present by default, like a loadable Hammerspoon module", function() assert.is_table(hs.ipc) end)
 end)

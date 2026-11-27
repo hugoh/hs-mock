@@ -12,6 +12,7 @@ local inspect = require("hs_mock.inspect")
 ---`application` (`find`, `get`, `watcher`, `launchOrFocus`,
 ---`launchOrFocusByBundleID`, `frontmostApplication`); `hotkey.bind`;
 ---`audiodevice`; `image` (`imageFromName`, `iconForFile`); `execute`; `open`;
+---`urlevent.openURL`;
 ---`ipc` (present); `alert`; `settings`; `screen.mainScreen`;
 ---`mouse.absolutePosition`; `eventtap` (`keyStroke`, `leftClick`, `new`,
 ---`event`); `websocket`; `wifi`; `host.interfaceStyle`;
@@ -297,6 +298,7 @@ function M.new()
 	---@field executed string[] Commands passed to `hs.execute`.
 	---@field onExecute? fun(command: string, withUserEnv?: boolean): string, boolean, string, integer Answers `hs.execute`; the default returns `"", true, "exit", 0`.
 	---@field opened string[] Paths passed to `hs.open`.
+	---@field openedURLs string[] URLs passed to `hs.urlevent.openURL`.
 	---@field alerts { id: string, text: string, style?: table, screen?: table, seconds?: number, closed: boolean }[] One entry per `hs.alert.show`, which returns the string `id`.
 	---@field settings table<string, any> Backing store for `hs.settings`.
 	---@field screenFrame { x: number, y: number, w: number, h: number } What `hs.screen.mainScreen():frame()` returns (a copy).
@@ -325,6 +327,7 @@ function M.new()
 		images = {},
 		executed = {},
 		opened = {},
+		openedURLs = {},
 		alerts = {},
 		settings = {},
 		screenFrame = { x = 0, y = 0, w = 1440, h = 900 },
@@ -750,6 +753,13 @@ function M.new()
 			table.insert(ctl.opened, path)
 			return true
 		end,
+
+		urlevent = strict("hs.urlevent", {
+			openURL = function(url)
+				table.insert(ctl.openedURLs, url)
+				return true
+			end,
+		}),
 
 		ipc = {},
 
