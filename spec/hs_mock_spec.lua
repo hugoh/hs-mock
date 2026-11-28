@@ -455,6 +455,25 @@ describe("hs.hotkey.bind", function()
 	end)
 end)
 
+describe("hs.hotkey.new", function()
+	it("records a disabled hotkey until enabled", function()
+		local pressed = function() end
+		local hk = hs.hotkey.new({ "ctrl" }, "space", pressed)
+		assert.equal(hk, ctl.hotkeys[1])
+		assert.equal(pressed, hk.pressed)
+		assert.is_false(hk.enabled)
+		hk:enable()
+		assert.is_true(hk.enabled)
+	end)
+
+	it("accepts a message", function()
+		local pressed = function() end
+		local hk = hs.hotkey.new({}, "x", "Hello", pressed)
+		assert.equal("Hello", hk.message)
+		assert.equal(pressed, hk.pressed)
+	end)
+end)
+
 describe("hs.json and hs.fs", function()
 	it("round-trips through ctl.files as a copy, like real serialization", function()
 		local data = { a = { 1, 2 } }

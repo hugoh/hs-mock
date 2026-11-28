@@ -10,7 +10,7 @@ local inspect = require("hs_mock.inspect")
 ---Mocked: `logger`; `timer` (`doAfter`, `doEvery`, `new`, `secondsSinceEpoch`,
 ---`absoluteTime`); `task`; `menubar`; `notify`; `caffeinate.watcher`;
 ---`application` (`find`, `get`, `watcher`, `launchOrFocus`,
----`launchOrFocusByBundleID`, `frontmostApplication`); `hotkey.bind`;
+---`launchOrFocusByBundleID`, `frontmostApplication`); `hotkey` (`bind`, `new`);
 ---`audiodevice`; `image` (`imageFromName`, `iconForFile`); `execute`; `open`;
 ---`urlevent.openURL`;
 ---`ipc` (present); `alert`; `settings`; `screen.mainScreen`;
@@ -285,7 +285,7 @@ function M.new()
 	---@field onTask? fun(task: HsMockTask): integer?, string?, string? Called on `task:start()`; returning an exit code completes the task at once.
 	---@field menubars HsMockMenubar[] Menu bar items created by `hs.menubar.new`.
 	---@field notifications table[] Notifications from `hs.notify.new`, keeping `_attributes`, `_sent` and `_withdrawn`.
-	---@field hotkeys { mods: string[], key: string, message?: string, pressed?: function, released?: function, repeated?: function, enabled: boolean, deleted: boolean }[] Bindings made with `hs.hotkey.bind`.
+	---@field hotkeys { mods: string[], key: string, message?: string, pressed?: function, released?: function, repeated?: function, enabled: boolean, deleted: boolean }[] Hotkeys from `hs.hotkey.bind` and `new`.
 	---@field apps table<string, table> Apps `hs.application.find` and `get` return: by key, else by `bundleID()` among these and `frontmost`.
 	---@field frontmost? table What `hs.application.frontmostApplication` returns.
 	---@field launched string[] Names and bundle ids passed to `launchOrFocus` / `launchOrFocusByBundleID`.
@@ -592,6 +592,24 @@ function M.new()
 		end
 	end
 
+	local function newHotkey(mods, key, message, pressed, released, repeated)
+		if type(message) == "function" then
+			message, pressed, released, repeated = nil, message, pressed, released
+		end
+		local hotkey = setmetatable({
+			mods = mods,
+			key = key,
+			message = message,
+			pressed = pressed,
+			released = released,
+			repeated = repeated,
+			enabled = false,
+			deleted = false,
+		}, Hotkey)
+		table.insert(ctl.hotkeys, hotkey)
+		return hotkey
+	end
+
 	local function record(id, level, message) table.insert(ctl.logs, { logger = id, level = level, message = message }) end
 
 	local hs = strict("hs", {
@@ -876,22 +894,9 @@ function M.new()
 
 		hotkey = strict("hs.hotkey", {
 			bind = function(mods, key, message, pressed, released, repeated)
-				if type(message) == "function" then
-					message, pressed, released, repeated = nil, message, pressed, released
-				end
-				local hotkey = setmetatable({
-					mods = mods,
-					key = key,
-					message = message,
-					pressed = pressed,
-					released = released,
-					repeated = repeated,
-					enabled = true,
-					deleted = false,
-				}, Hotkey)
-				table.insert(ctl.hotkeys, hotkey)
-				return hotkey
+				return newHotkey(mods, key, message, pressed, released, repeated):enable()
 			end,
+			new = newHotkey,
 		}),
 
 		json = strict("hs.json", {
